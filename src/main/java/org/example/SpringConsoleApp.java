@@ -42,8 +42,6 @@ class AppConfig {
 class CommandHandler {
     private final MessageSource messageSource;
     private final EntityService entityService;
-
-
     private Locale locale = Locale.getDefault();
 
     @Autowired
@@ -69,6 +67,53 @@ class CommandHandler {
                         Entity entity = entityService.findById(id);
                         if (entity != null) {
                             System.out.println(formatEntity(entity));
+                        } else {
+                            System.out.println(messageSource.getMessage("error.not.found", null, locale));
+                        }
+                    } catch (NumberFormatException e) {
+                        System.out.println(messageSource.getMessage("error.invalid.id", null, locale));
+                    }
+                } else {
+                    System.out.println(messageSource.getMessage("error.missing.parameter", null, locale));
+                }
+            } else if (command.startsWith("add")) {
+                String[] parts = command.split(" ", 2);
+                if (parts.length == 2) {
+                    int rows = entityService.addEntity(parts[1]);
+                    if (rows > 0) {
+                        System.out.println(messageSource.getMessage("success.add", null, locale));
+                    } else {
+                        System.out.println(messageSource.getMessage("error.add", null, locale));
+                    }
+                } else {
+                    System.out.println(messageSource.getMessage("error.missing.parameter", null, locale));
+                }
+            } else if (command.startsWith("edit")) {
+                String[] parts = command.split(" ", 3);
+                if (parts.length == 3) {
+                    try {
+                        int id = Integer.parseInt(parts[1]);
+                        String newName = parts[2];
+                        int rows = entityService.updateEntity(id, newName);
+                        if (rows > 0) {
+                            System.out.println(messageSource.getMessage("success.update", null, locale));
+                        } else {
+                            System.out.println(messageSource.getMessage("error.not.found", null, locale));
+                        }
+                    } catch (NumberFormatException e) {
+                        System.out.println(messageSource.getMessage("error.invalid.id", null, locale));
+                    }
+                } else {
+                    System.out.println(messageSource.getMessage("error.missing.parameter", null, locale));
+                }
+            } else if (command.startsWith("delete")) {
+                String[] parts = command.split(" ", 2);
+                if (parts.length == 2) {
+                    try {
+                        int id = Integer.parseInt(parts[1]);
+                        int rows = entityService.deleteEntity(id);
+                        if (rows > 0) {
+                            System.out.println(messageSource.getMessage("success.delete", null, locale));
                         } else {
                             System.out.println(messageSource.getMessage("error.not.found", null, locale));
                         }
@@ -116,10 +161,6 @@ class CommandHandler {
 @Service
 class EntityService {
     private final EntityDao entityDao;
-    public int addEntity(String name) {
-        return entityDao.addEntity(name);
-    }
-
 
     @Autowired
     public EntityService(EntityDao entityDao) {
@@ -133,15 +174,23 @@ class EntityService {
     public Entity findById(int id) {
         return entityDao.findById(id);
     }
+
+    public int addEntity(String name) {
+        return entityDao.addEntity(name);
+    }
+
+    public int updateEntity(int id, String newName) {
+        return entityDao.updateEntity(id, newName);
+    }
+
+    public int deleteEntity(int id) {
+        return entityDao.deleteEntity(id);
+    }
 }
 
 @Repository
 class EntityDao {
     private final JdbcTemplate jdbcTemplate;
-    public int addEntity(String name) {
-        return jdbcTemplate.update("INSERT INTO entities (name) VALUES (?)", name);
-    }
-
 
     @Autowired
     public EntityDao(JdbcTemplate jdbcTemplate) {
@@ -158,6 +207,18 @@ class EntityDao {
         } catch (DataAccessException e) {
             return null;
         }
+    }
+
+    public int addEntity(String name) {
+        return jdbcTemplate.update("INSERT INTO entities (name) VALUES (?)", name);
+    }
+
+    public int updateEntity(int id, String newName) {
+        return jdbcTemplate.update("UPDATE entities SET name = ? WHERE id = ?", newName, id);
+    }
+
+    public int deleteEntity(int id) {
+        return jdbcTemplate.update("DELETE FROM entities WHERE id = ?", id);
     }
 }
 
